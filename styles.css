@@ -453,14 +453,14 @@ select.sort-select:disabled {
 .spine {
   position: relative;
   z-index: 1;
-  height: 300px;
+  height: 340px;
   border-radius: 3px 3px 2px 2px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 6px 12px;
+  padding: 18px 8px 14px;
   box-shadow: 2px 0 4px rgba(0, 0, 0, 0.25), inset -3px 0 6px rgba(0, 0, 0, 0.15), inset 3px 0 4px rgba(255, 255, 255, 0.08);
   background-size: cover;
   background-position: center;
@@ -485,27 +485,26 @@ select.sort-select:disabled {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-family: var(--font-serif);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .spine .spine-title {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.96);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
-  max-height: 205px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  max-height: 195px;
 }
 
 .spine .spine-author {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.82);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
-  max-height: 78px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  max-height: 150px;
 }
 
 /* ---------- Modal ---------- */

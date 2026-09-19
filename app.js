@@ -436,11 +436,11 @@ function renderShelf() {
   for (const book of list) {
     const spine = document.createElement("div");
     spine.className = "spine";
-    spine.style.width = spineWidthFor(book.id) + "px";
+    spine.style.minWidth = spineWidthFor(book.id) + "px";
 
     const cover = coverUrlFor(book.coverId, "M");
     if (cover) {
-      spine.style.backgroundImage = `linear-gradient(rgba(10, 12, 18, 0.6), rgba(10, 12, 18, 0.6)), url("${cover}")`;
+      spine.style.backgroundImage = `linear-gradient(rgba(6, 8, 13, 0.82), rgba(6, 8, 13, 0.82)), url("${cover}")`;
     } else {
       spine.style.backgroundColor = spineColorFor(book.title);
     }
