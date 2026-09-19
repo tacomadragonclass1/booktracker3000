@@ -221,6 +221,12 @@ main {
   color: var(--text);
 }
 
+.header-search {
+  min-width: 180px;
+  max-width: 280px;
+  flex: 1;
+}
+
 .search-input:focus,
 select:focus,
 textarea:focus,
