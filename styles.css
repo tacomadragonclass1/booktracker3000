@@ -178,10 +178,11 @@ main {
 
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
   align-items: center;
   margin-bottom: 20px;
+  overflow-x: auto;
 }
 
 .tabs {
@@ -191,6 +192,13 @@ main {
   border: 1px solid var(--border);
   border-radius: 9px;
   padding: 3px;
+  flex-shrink: 0;
+}
+
+#status-tabs {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .tab-btn {
@@ -240,6 +248,7 @@ select.sort-select {
   background: var(--bg-elevated);
   border-radius: 8px;
   padding: 9px 10px;
+  flex-shrink: 0;
 }
 
 /* ---------- Book grid ---------- */
