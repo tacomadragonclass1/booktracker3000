@@ -80,6 +80,23 @@ Click the gear icon in the top-right corner at any time to open
 the stored token entirely (this only clears it from your browser —
 nothing on GitHub is touched).
 
+## Metadata search & Shelf view
+
+- **Metadata search**: in the Add/Edit form, the "Find book metadata" box
+  queries the [Open Library Search API](https://openlibrary.org/dev/docs/api/search)
+  (free, no key or account required, CORS-enabled) and lets you click a
+  result to auto-fill title/author plus a cover image, first-publish year,
+  and ISBN. This is entirely optional — you can still type title/author by
+  hand and skip it. Selected metadata is stored on the book record
+  (`coverId`, `isbn`, `firstPublishYear`, `olKey`) and shown in the detail
+  view; older book records without these fields work fine, they just show
+  no cover.
+- **Shelf view**: a second view mode (toggle next to the status tabs) that
+  renders your filtered/sorted books as spines standing on a wooden shelf
+  background — books with a cover show it as the spine art, others get a
+  deterministic color derived from the title. Purely visual; it uses the
+  same underlying book data as Grid view and doesn't change what's stored.
+
 ## Notes & limitations
 
 - This is intentionally single-user: anyone with the token can read/write

@@ -11,6 +11,8 @@ const DATA_PATH = "data/books.json";
 const CONFIG_KEY = "bt3k_config";
 const DRAFT_PREFIX = "bt3k_draft_";
 const API_VERSION = "2022-11-28";
+const OPEN_LIBRARY_SEARCH_URL = "https://openlibrary.org/search.json";
+const OPEN_LIBRARY_COVER_URL = "https://covers.openlibrary.org/b/id";
 
 /* ---------------------------------------------------------------------
    Config (owner/repo/branch/token) persistence
@@ -148,6 +150,44 @@ async function saveBooks(cfg, books, sha, message) {
 }
 
 /* ---------------------------------------------------------------------
+   Book metadata lookup (Open Library — free, keyless, CORS-enabled)
+   --------------------------------------------------------------------- */
+
+function coverUrlFor(coverId, size) {
+  if (!coverId) return null;
+  return `${OPEN_LIBRARY_COVER_URL}/${coverId}-${size || "M"}.jpg`;
+}
+
+async function searchBookMetadata(query) {
+  const url = `${OPEN_LIBRARY_SEARCH_URL}?q=${encodeURIComponent(query)}&fields=title,author_name,first_publish_year,cover_i,isbn,key&limit=8`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Open Library search failed (${res.status})`);
+  const json = await res.json();
+  return json.docs || [];
+}
+
+/* ---------------------------------------------------------------------
+   Deterministic cosmetic hashing (shelf spine width/color, no cover art)
+   --------------------------------------------------------------------- */
+
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function spineWidthFor(id) {
+  return 46 + (hashString(id) % 34); // 46-79px, stands in for spine thickness
+}
+
+function spineColorFor(title) {
+  const hue = hashString(title || "") % 360;
+  return `hsl(${hue}, 32%, 30%)`;
+}
+
+/* ---------------------------------------------------------------------
    Minimal Markdown renderer (headers, bold, italic, lists, paragraphs)
    --------------------------------------------------------------------- */
 
@@ -228,6 +268,7 @@ const state = {
   search: "",
   sort: "date_desc",
   editingId: null,
+  viewMode: "grid",
 };
 
 /* ---------------------------------------------------------------------
@@ -337,6 +378,100 @@ function renderGrid() {
   }
 }
 
+const STATUS_FLAG_COLOR = { read: "var(--success)", reading: "var(--accent)", want: "rgba(255,255,255,0.35)" };
+
+function renderShelf() {
+  const container = document.getElementById("shelf-books");
+  const list = getFilteredSortedBooks();
+  container.innerHTML = "";
+
+  if (list.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "shelf-empty";
+    empty.textContent = "No books here yet.";
+    container.appendChild(empty);
+    return;
+  }
+
+  for (const book of list) {
+    const spine = document.createElement("div");
+    spine.className = "spine";
+    spine.style.width = spineWidthFor(book.id) + "px";
+
+    const cover = coverUrlFor(book.coverId, "M");
+    if (cover) {
+      spine.classList.add("has-cover");
+      spine.style.backgroundImage = `url("${cover}")`;
+    } else {
+      spine.style.backgroundColor = spineColorFor(book.title);
+    }
+
+    const flag = document.createElement("div");
+    flag.className = "spine-status-flag";
+    flag.style.background = STATUS_FLAG_COLOR[book.status] || "transparent";
+    spine.appendChild(flag);
+
+    const titleEl = document.createElement("span");
+    titleEl.className = "spine-title";
+    titleEl.textContent = book.title || "Untitled";
+    spine.appendChild(titleEl);
+
+    const ratingStr = book.rating ? ` — ${"★".repeat(book.rating)}` : "";
+    spine.title = `${book.title || "Untitled"} by ${book.author || "Unknown author"}${ratingStr}`;
+
+    spine.addEventListener("click", () => openDetail(book.id));
+    container.appendChild(spine);
+  }
+
+  requestAnimationFrame(layoutShelfBoards);
+}
+
+function layoutShelfBoards() {
+  const container = document.getElementById("shelf-books");
+  if (!container) return;
+  container.querySelectorAll(".shelf-board").forEach((b) => b.remove());
+
+  const spines = Array.from(container.querySelectorAll(".spine"));
+  if (!spines.length) return;
+
+  const rows = [];
+  let currentTop = null;
+  let currentRow = [];
+  for (const s of spines) {
+    const top = s.offsetTop;
+    if (currentTop === null || Math.abs(top - currentTop) < 2) {
+      currentTop = top;
+      currentRow.push(s);
+    } else {
+      rows.push(currentRow);
+      currentRow = [s];
+      currentTop = top;
+    }
+  }
+  if (currentRow.length) rows.push(currentRow);
+
+  for (const row of rows) {
+    const bottom = Math.max(...row.map((s) => s.offsetTop + s.offsetHeight));
+    const board = document.createElement("div");
+    board.className = "shelf-board";
+    board.style.top = bottom + 14 + "px";
+    container.appendChild(board);
+  }
+}
+
+function render() {
+  if (state.viewMode === "shelf") {
+    document.getElementById("book-grid").classList.add("hidden");
+    document.getElementById("empty-list").classList.add("hidden");
+    document.getElementById("shelf-view").classList.remove("hidden");
+    renderShelf();
+  } else {
+    document.getElementById("shelf-view").classList.add("hidden");
+    document.getElementById("book-grid").classList.remove("hidden");
+    renderGrid();
+  }
+}
+
 /* ---------------------------------------------------------------------
    Screen switching
    --------------------------------------------------------------------- */
@@ -369,7 +504,7 @@ async function loadBooksFromGitHub() {
     state.books = books;
     state.sha = sha;
     showAppScreen();
-    renderGrid();
+    render();
     hideToast();
   } catch (e) {
     hideToast();
@@ -378,7 +513,7 @@ async function loadBooksFromGitHub() {
     } else {
       showToast(e.message || "Failed to load books.json", { error: true, duration: 6000 });
       showAppScreen();
-      renderGrid();
+      render();
     }
   }
 }
@@ -399,6 +534,10 @@ function readFormValues() {
     date: document.getElementById("field-date").value,
     rating: currentFormRating,
     notes: document.getElementById("field-notes").value,
+    coverId: currentCoverId,
+    isbn: currentIsbn,
+    firstPublishYear: currentFirstPublishYear,
+    olKey: currentOlKey,
   };
 }
 
@@ -433,6 +572,10 @@ function scheduleDraftSave(id) {
    --------------------------------------------------------------------- */
 
 let currentFormRating = 0;
+let currentCoverId = null;
+let currentIsbn = null;
+let currentFirstPublishYear = null;
+let currentOlKey = null;
 
 function setStarPicker(rating) {
   currentFormRating = rating;
@@ -440,6 +583,88 @@ function setStarPicker(rating) {
   stars.forEach((s) => {
     s.classList.toggle("on", Number(s.dataset.val) <= rating);
   });
+}
+
+function updateCoverPreview() {
+  const row = document.getElementById("cover-preview-row");
+  const img = document.getElementById("cover-preview-img");
+  const text = document.getElementById("cover-preview-text");
+  if (currentCoverId) {
+    img.src = coverUrlFor(currentCoverId, "M");
+    const bits = [];
+    if (currentFirstPublishYear) bits.push(`First published ${currentFirstPublishYear}`);
+    if (currentIsbn) bits.push(`ISBN ${currentIsbn}`);
+    text.textContent = bits.join(" · ") || "Cover linked from Open Library";
+    row.classList.remove("hidden");
+  } else {
+    row.classList.add("hidden");
+    img.removeAttribute("src");
+  }
+}
+
+function setMetaState({ coverId = null, isbn = null, firstPublishYear = null, olKey = null } = {}) {
+  currentCoverId = coverId;
+  currentIsbn = isbn;
+  currentFirstPublishYear = firstPublishYear;
+  currentOlKey = olKey;
+  updateCoverPreview();
+}
+
+function renderMetaResults(docs) {
+  const box = document.getElementById("meta-results");
+  box.innerHTML = "";
+  if (!docs.length) {
+    box.innerHTML = '<div class="meta-empty">No matches found.</div>';
+    box.classList.remove("hidden");
+    return;
+  }
+  for (const doc of docs) {
+    const row = document.createElement("div");
+    row.className = "meta-result-item";
+    const coverUrl = coverUrlFor(doc.cover_i, "S");
+    const author = (doc.author_name && doc.author_name[0]) || "Unknown author";
+    row.innerHTML = `
+      ${coverUrl ? `<img class="meta-result-cover" src="${coverUrl}" alt="" />` : '<div class="meta-result-cover"></div>'}
+      <div class="meta-result-text">
+        <div class="mr-title">${escapeHtml(doc.title || "Untitled")}</div>
+        <div class="mr-sub">${escapeHtml(author)}${doc.first_publish_year ? " · " + doc.first_publish_year : ""}</div>
+      </div>
+    `;
+    row.addEventListener("click", () => {
+      document.getElementById("field-title").value = doc.title || "";
+      document.getElementById("field-author").value = author === "Unknown author" ? "" : author;
+      setMetaState({
+        coverId: doc.cover_i || null,
+        isbn: (doc.isbn && doc.isbn[0]) || null,
+        firstPublishYear: doc.first_publish_year || null,
+        olKey: doc.key || null,
+      });
+      box.classList.add("hidden");
+      box.innerHTML = "";
+      if (state.editingId) scheduleDraftSave(state.editingId);
+    });
+    box.appendChild(row);
+  }
+  box.classList.remove("hidden");
+}
+
+async function handleMetaSearch() {
+  const query = document.getElementById("meta-search-input").value.trim();
+  if (!query) return;
+  const box = document.getElementById("meta-results");
+  box.innerHTML = '<div class="meta-empty">Searching...</div>';
+  box.classList.remove("hidden");
+  try {
+    const docs = await searchBookMetadata(query);
+    renderMetaResults(docs);
+  } catch (e) {
+    box.innerHTML = `<div class="meta-empty">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function handleCoverRemove() {
+  setMetaState();
+  if (state.editingId) scheduleDraftSave(state.editingId);
 }
 
 function openAddForm() {
@@ -452,6 +677,10 @@ function openAddForm() {
   document.getElementById("field-date").value = "";
   document.getElementById("field-notes").value = "";
   setStarPicker(0);
+  document.getElementById("meta-search-input").value = "";
+  document.getElementById("meta-results").innerHTML = "";
+  document.getElementById("meta-results").classList.add("hidden");
+  setMetaState();
   document.getElementById("delete-book-btn").classList.add("hidden");
   document.getElementById("draft-note").textContent = "";
   document.getElementById("form-modal-overlay").classList.remove("hidden");
@@ -468,6 +697,15 @@ function openEditForm(book) {
   document.getElementById("field-date").value = book.date || "";
   document.getElementById("field-notes").value = book.notes || "";
   setStarPicker(Number(book.rating) || 0);
+  document.getElementById("meta-search-input").value = "";
+  document.getElementById("meta-results").innerHTML = "";
+  document.getElementById("meta-results").classList.add("hidden");
+  setMetaState({
+    coverId: book.coverId || null,
+    isbn: book.isbn || null,
+    firstPublishYear: book.firstPublishYear || null,
+    olKey: book.olKey || null,
+  });
   document.getElementById("delete-book-btn").classList.remove("hidden");
   document.getElementById("draft-note").textContent = "";
 
@@ -479,7 +717,8 @@ function openEditForm(book) {
       draft.values.notes !== (book.notes || "") ||
       draft.values.status !== book.status ||
       draft.values.date !== (book.date || "") ||
-      Number(draft.values.rating) !== (Number(book.rating) || 0);
+      Number(draft.values.rating) !== (Number(book.rating) || 0) ||
+      (draft.values.coverId || null) !== (book.coverId || null);
 
     if (draftDiffers) {
       const when = new Date(draft.savedAt).toLocaleString();
@@ -490,6 +729,12 @@ function openEditForm(book) {
         document.getElementById("field-date").value = draft.values.date;
         document.getElementById("field-notes").value = draft.values.notes;
         setStarPicker(Number(draft.values.rating) || 0);
+        setMetaState({
+          coverId: draft.values.coverId || null,
+          isbn: draft.values.isbn || null,
+          firstPublishYear: draft.values.firstPublishYear || null,
+          olKey: draft.values.olKey || null,
+        });
         document.getElementById("draft-note").textContent = "Restored unsaved draft.";
       }
     }
@@ -518,6 +763,10 @@ async function handleFormSubmit(e) {
     date: values.date,
     rating: values.rating,
     notes: values.notes,
+    coverId: values.coverId,
+    isbn: values.isbn,
+    firstPublishYear: values.firstPublishYear,
+    olKey: values.olKey,
     updatedAt: now,
     createdAt: existingIndex >= 0 ? state.books[existingIndex].createdAt || now : now,
   };
@@ -546,7 +795,7 @@ async function handleFormSubmit(e) {
     hideToast();
     showToast("Saved.");
     closeForm();
-    renderGrid();
+    render();
   } catch (err) {
     hideToast();
     if (err instanceof GitHubApiError && err.status === 409) {
@@ -558,7 +807,7 @@ async function handleFormSubmit(e) {
         const { books, sha } = await fetchBooks(state.cfg);
         state.books = books;
         state.sha = sha;
-        renderGrid();
+        render();
       } catch (reErr) {
         showToast("Also failed to reload latest data: " + reErr.message, { error: true, duration: 6000 });
       }
@@ -589,7 +838,7 @@ async function handleDeleteBook() {
     hideToast();
     showToast("Deleted.");
     closeForm();
-    renderGrid();
+    render();
   } catch (err) {
     hideToast();
     if (err instanceof GitHubApiError && err.status === 409) {
@@ -598,7 +847,7 @@ async function handleDeleteBook() {
         const { books, sha } = await fetchBooks(state.cfg);
         state.books = books;
         state.sha = sha;
-        renderGrid();
+        render();
       } catch (reErr) {
         showToast("Also failed to reload latest data: " + reErr.message, { error: true, duration: 6000 });
       }
@@ -620,7 +869,23 @@ function openDetail(id) {
   document.getElementById("detail-title").textContent = book.title || "Untitled";
   document.getElementById("detail-author").textContent = book.author || "Unknown author";
   document.getElementById("detail-stars").innerHTML = book.rating ? starString(book.rating) : "";
-  document.getElementById("detail-meta").textContent = book.date ? `Logged: ${book.date}` : "";
+
+  const metaBits = [];
+  if (book.date) metaBits.push(`Logged: ${book.date}`);
+  if (book.firstPublishYear) metaBits.push(`First published ${book.firstPublishYear}`);
+  if (book.isbn) metaBits.push(`ISBN ${book.isbn}`);
+  document.getElementById("detail-meta").textContent = metaBits.join(" · ");
+
+  const coverImg = document.getElementById("detail-cover");
+  const coverUrl = coverUrlFor(book.coverId, "L");
+  if (coverUrl) {
+    coverImg.src = coverUrl;
+    coverImg.classList.remove("hidden");
+  } else {
+    coverImg.classList.add("hidden");
+    coverImg.removeAttribute("src");
+  }
+
   document.getElementById("detail-notes").innerHTML = book.notes
     ? markdownToHtml(book.notes)
     : '<p style="color:var(--text-faint)">No notes yet.</p>';
@@ -717,7 +982,7 @@ async function handleSetupSave() {
     state.sha = sha;
     hideToast();
     showAppScreen();
-    renderGrid();
+    render();
   } catch (e) {
     hideToast();
     errorEl.textContent = e.message || "Could not connect. Check your settings and try again.";
@@ -769,20 +1034,45 @@ function wireEvents() {
   document.getElementById("status-tabs").addEventListener("click", (e) => {
     const btn = e.target.closest(".tab-btn");
     if (!btn) return;
-    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll("#status-tabs .tab-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     state.statusFilter = btn.dataset.status;
-    renderGrid();
+    render();
+  });
+
+  document.getElementById("view-toggle").addEventListener("click", (e) => {
+    const btn = e.target.closest(".tab-btn");
+    if (!btn) return;
+    document.querySelectorAll("#view-toggle .tab-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.viewMode = btn.dataset.view;
+    render();
+  });
+
+  document.getElementById("meta-search-btn").addEventListener("click", handleMetaSearch);
+  document.getElementById("meta-search-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleMetaSearch();
+    }
+  });
+  document.getElementById("cover-remove-btn").addEventListener("click", handleCoverRemove);
+
+  let shelfResizeTimer = null;
+  window.addEventListener("resize", () => {
+    if (state.viewMode !== "shelf") return;
+    if (shelfResizeTimer) clearTimeout(shelfResizeTimer);
+    shelfResizeTimer = setTimeout(layoutShelfBoards, 150);
   });
 
   document.getElementById("search-input").addEventListener("input", (e) => {
     state.search = e.target.value;
-    renderGrid();
+    render();
   });
 
   document.getElementById("sort-select").addEventListener("change", (e) => {
     state.sort = e.target.value;
-    renderGrid();
+    render();
   });
 
   document.addEventListener("keydown", (e) => {

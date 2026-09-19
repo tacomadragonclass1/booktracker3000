@@ -66,6 +66,10 @@
         <button class="tab-btn" data-status="read">Read</button>
         <button class="tab-btn" data-status="want">Want to Read</button>
       </div>
+      <div class="tabs" id="view-toggle">
+        <button class="tab-btn active" data-view="grid">Grid</button>
+        <button class="tab-btn" data-view="shelf">Shelf</button>
+      </div>
       <div class="toolbar-spacer"></div>
       <input type="text" class="search-input" id="search-input" placeholder="Search title or author..." />
       <select class="sort-select" id="sort-select">
@@ -80,6 +84,10 @@
 
     <div id="book-grid" class="book-grid"></div>
     <div id="empty-list" class="empty-list hidden">No books here yet.</div>
+
+    <div id="shelf-view" class="shelf-view hidden">
+      <div id="shelf-books" class="shelf-books"></div>
+    </div>
   </main>
 </div>
 
@@ -92,6 +100,21 @@
     </div>
     <form id="book-form">
       <input type="hidden" id="book-id" />
+      <div class="form-field full meta-search-block">
+        <label for="meta-search-input">Find book metadata (optional)</label>
+        <div class="meta-search-row">
+          <input type="text" id="meta-search-input" placeholder="Search by title or author..." autocomplete="off" />
+          <button type="button" class="btn btn-sm" id="meta-search-btn">Search</button>
+        </div>
+        <div id="meta-results" class="meta-results hidden"></div>
+        <div id="cover-preview-row" class="cover-preview-row hidden">
+          <img id="cover-preview-img" class="cover-preview-img" alt="Cover preview" />
+          <div class="cover-preview-info">
+            <div id="cover-preview-text"></div>
+            <button type="button" class="btn btn-sm btn-danger" id="cover-remove-btn">Remove cover</button>
+          </div>
+        </div>
+      </div>
       <div class="form-grid">
         <div class="form-field full">
           <label for="field-title">Title</label>
@@ -143,11 +166,16 @@
       <div></div>
       <button class="close-btn" id="detail-close-btn" aria-label="Close">&times;</button>
     </div>
-    <div class="detail-status" id="detail-status"></div>
-    <h2 class="detail-title" id="detail-title"></h2>
-    <p class="detail-author" id="detail-author"></p>
-    <div class="detail-stars" id="detail-stars"></div>
-    <div class="detail-meta" id="detail-meta"></div>
+    <div class="detail-header">
+      <img id="detail-cover" class="detail-cover-img hidden" alt="" />
+      <div class="detail-header-text">
+        <div class="detail-status" id="detail-status"></div>
+        <h2 class="detail-title" id="detail-title"></h2>
+        <p class="detail-author" id="detail-author"></p>
+        <div class="detail-stars" id="detail-stars"></div>
+        <div class="detail-meta" id="detail-meta"></div>
+      </div>
+    </div>
     <div class="detail-notes" id="detail-notes"></div>
     <div class="modal-actions">
       <div></div>
