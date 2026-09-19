@@ -1,0 +1,85 @@
+# booktracker3000
+
+A lightweight, single-user Goodreads replacement. It's a static HTML/JS site
+served from GitHub Pages, with no backend server — your book data is stored
+as JSON directly in a private GitHub repository and read/written from the
+browser using the GitHub REST API.
+
+## How it works
+
+- **Frontend**: `index.html` + `app.js` + `styles.css`, no build step, no framework.
+- **Database**: `data/books.json` in whichever repo you point it at (can be
+  this same repo, or a separate private repo used only for data).
+- **Auth**: a fine-grained GitHub Personal Access Token, entered once and
+  stored in `localStorage` in your browser. Every read/write goes straight
+  from your browser to `api.github.com` — there is no intermediate server.
+
+## Setup
+
+### 1. Decide where your data lives
+
+You can store `data/books.json` in this same repo, or point the app at a
+separate **private** repo dedicated to your book data (recommended, since
+GitHub Pages sites are public by default even if the source repo is
+private — keeping data in a separate private repo means your reviews are
+never served as static files).
+
+If you use a separate data repo, just create an empty private repo on
+GitHub. The app will create `data/books.json` in it automatically on your
+first save.
+
+### 2. Deploy the app to GitHub Pages
+
+1. Push this folder to a GitHub repo (public or private with Pages enabled
+   on a paid plan — a public repo is fine since the app code contains no
+   secrets or data).
+2. In the repo settings, enable **GitHub Pages** for the branch/folder
+   containing `index.html`.
+3. Visit the published URL.
+
+### 3. Create a Fine-Grained Personal Access Token
+
+1. Go to `https://github.com/settings/personal-access-tokens/new`.
+2. Give it a name like `booktracker3000`.
+3. Under **Repository access**, choose **Only select repositories** and
+   pick your data repo.
+4. Under **Permissions → Repository permissions**, set **Contents** to
+   **Read and write**. Nothing else is needed.
+5. Generate the token and copy it (you won't be able to see it again).
+
+### 4. Connect the app
+
+On first visit, the app will show a setup screen asking for:
+
+- **Repo owner** — your GitHub username or org.
+- **Repository name** — the repo holding `data/books.json`.
+- **Branch** — usually `main`.
+- **Personal Access Token** — the token you just created.
+
+Click **Connect & Load Library**. The app will try to read
+`data/books.json`; if it doesn't exist yet, it will be created the first
+time you save a book.
+
+## Updating or removing your token
+
+Click the gear icon in the top-right corner at any time to open
+**Settings**, where you can update the owner/repo/branch/token or delete
+the stored token entirely (this only clears it from your browser —
+nothing on GitHub is touched).
+
+## Notes & limitations
+
+- This is intentionally single-user: anyone with the token can read/write
+  your data, so keep the token private and scoped only to the data repo.
+- The GitHub Contents API used here has a practical size limit of about 1MB
+  per file. That comfortably fits hundreds of books with long-form notes,
+  but if your library grows very large, consider splitting `books.json`
+  into per-book files under `/data` (the schema is intentionally simple —
+  one JSON object per book — to make that migration easy later).
+- Drafts of the book form (title/author/notes/etc.) autosave to
+  `localStorage` every ~800ms while typing, so a closed tab or crash won't
+  lose an in-progress review. Drafts are cleared automatically once a save
+  to GitHub succeeds.
+- If GitHub reports a conflict while saving (the file changed since it was
+  loaded — e.g. you edited it on two devices), the app reloads the latest
+  version and asks you to redo and re-save your change.

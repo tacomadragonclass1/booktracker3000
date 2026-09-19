@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>booktracker3000</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ============ SETUP SCREEN (shown when no token/repo configured) ============ -->
+<div id="setup-screen" class="setup-screen hidden">
+  <h1>booktracker<span style="color:var(--accent)">3000</span></h1>
+  <p>A single-user Goodreads replacement that stores your books directly in a private GitHub repository. No server, no database &mdash; just a JSON file and a personal access token.</p>
+
+  <div class="setup-card">
+    <strong>Setup</strong>
+    <ol>
+      <li>Create (or reuse) a private GitHub repo to hold your book data.</li>
+      <li>Go to <code>github.com/settings/personal-access-tokens/new</code> and create a <strong>Fine-Grained</strong> token scoped only to that repository.</li>
+      <li>Under <strong>Repository permissions</strong>, set <code>Contents</code> to <strong>Read and write</strong>.</li>
+      <li>Copy the token and paste it below, along with the repo owner and name.</li>
+    </ol>
+
+    <div class="setup-field">
+      <label for="setup-owner">GitHub username / org (repo owner)</label>
+      <input type="text" id="setup-owner" placeholder="e.g. tacomadragonclass1" autocomplete="off" />
+    </div>
+    <div class="setup-field">
+      <label for="setup-repo">Repository name</label>
+      <input type="text" id="setup-repo" placeholder="e.g. booktracker3000-data" autocomplete="off" />
+    </div>
+    <div class="setup-field">
+      <label for="setup-branch">Branch</label>
+      <input type="text" id="setup-branch" placeholder="main" value="main" autocomplete="off" />
+    </div>
+    <div class="setup-field">
+      <label for="setup-token">Fine-Grained Personal Access Token</label>
+      <input type="password" id="setup-token" placeholder="github_pat_..." autocomplete="off" />
+    </div>
+
+    <div class="setup-error" id="setup-error"></div>
+
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <button class="btn btn-primary" id="setup-save-btn">Connect &amp; Load Library</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app-root" class="hidden">
+  <header class="app-header">
+    <h1 class="app-title">booktracker<span class="dot">3000</span></h1>
+    <div class="header-spacer"></div>
+    <button class="btn btn-primary" id="add-book-btn">+ Add Book</button>
+    <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div class="tabs" id="status-tabs">
+        <button class="tab-btn active" data-status="all">All</button>
+        <button class="tab-btn" data-status="reading">Currently Reading</button>
+        <button class="tab-btn" data-status="read">Read</button>
+        <button class="tab-btn" data-status="want">Want to Read</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <input type="text" class="search-input" id="search-input" placeholder="Search title or author..." />
+      <select class="sort-select" id="sort-select">
+        <option value="date_desc">Date Read (newest)</option>
+        <option value="date_asc">Date Read (oldest)</option>
+        <option value="title_asc">Title (A&ndash;Z)</option>
+        <option value="title_desc">Title (Z&ndash;A)</option>
+        <option value="rating_desc">Rating (high&ndash;low)</option>
+        <option value="rating_asc">Rating (low&ndash;high)</option>
+      </select>
+    </div>
+
+    <div id="book-grid" class="book-grid"></div>
+    <div id="empty-list" class="empty-list hidden">No books here yet.</div>
+  </main>
+</div>
+
+<!-- ============ ADD / EDIT MODAL ============ -->
+<div id="form-modal-overlay" class="modal-overlay hidden">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2 id="form-modal-title">Add Book</h2>
+      <button class="close-btn" id="form-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <form id="book-form">
+      <input type="hidden" id="book-id" />
+      <div class="form-grid">
+        <div class="form-field full">
+          <label for="field-title">Title</label>
+          <input type="text" id="field-title" required />
+        </div>
+        <div class="form-field full">
+          <label for="field-author">Author</label>
+          <input type="text" id="field-author" required />
+        </div>
+        <div class="form-field">
+          <label for="field-status">Reading Status</label>
+          <select id="field-status">
+            <option value="want">Want to Read</option>
+            <option value="reading">Currently Reading</option>
+            <option value="read">Read</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="field-date">Date Finished / Logged</label>
+          <input type="date" id="field-date" />
+        </div>
+        <div class="form-field full">
+          <label>Rating</label>
+          <div class="star-picker" id="star-picker">
+            <span data-val="1">&#9733;</span><span data-val="2">&#9733;</span><span data-val="3">&#9733;</span><span data-val="4">&#9733;</span><span data-val="5">&#9733;</span>
+          </div>
+        </div>
+        <div class="form-field full">
+          <label for="field-notes">Personal Review / Notes (Markdown supported)</label>
+          <textarea id="field-notes" placeholder="Write as much as you'd like..."></textarea>
+        </div>
+      </div>
+      <div class="draft-note" id="draft-note"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger hidden" id="delete-book-btn">Delete Book</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn" id="form-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="form-save-btn">Save Book</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ DETAIL VIEW MODAL ============ -->
+<div id="detail-modal-overlay" class="modal-overlay hidden">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div></div>
+      <button class="close-btn" id="detail-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="detail-status" id="detail-status"></div>
+    <h2 class="detail-title" id="detail-title"></h2>
+    <p class="detail-author" id="detail-author"></p>
+    <div class="detail-stars" id="detail-stars"></div>
+    <div class="detail-meta" id="detail-meta"></div>
+    <div class="detail-notes" id="detail-notes"></div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn" id="detail-edit-btn">Edit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SETTINGS PANEL ============ -->
+<div id="settings-panel" class="settings-panel hidden">
+  <h2>Settings</h2>
+
+  <label class="field-label" for="settings-owner">Repo owner</label>
+  <input type="text" id="settings-owner" />
+
+  <label class="field-label" for="settings-repo">Repo name</label>
+  <input type="text" id="settings-repo" />
+
+  <label class="field-label" for="settings-branch">Branch</label>
+  <input type="text" id="settings-branch" />
+
+  <label class="field-label" for="settings-token">Personal Access Token</label>
+  <div class="settings-row">
+    <input type="password" id="settings-token" placeholder="github_pat_..." />
+  </div>
+
+  <div class="settings-status" id="settings-status"></div>
+
+  <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
+    <button class="btn btn-primary" id="settings-save-btn">Save Settings</button>
+    <button class="btn btn-danger" id="settings-clear-btn">Delete Stored Token &amp; Reset</button>
+    <button class="btn" id="settings-close-btn">Close</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
