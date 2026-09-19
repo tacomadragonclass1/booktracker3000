@@ -14,25 +14,37 @@ browser using the GitHub REST API.
   stored in `localStorage` in your browser. Every read/write goes straight
   from your browser to `api.github.com` — there is no intermediate server.
 
-## Setup
+## This deployment
+
+This project actually uses **two repos**, because GitHub Pages on a free
+plan only serves from public repos, and we didn't want book reviews
+sitting in a public file:
+
+- **[`tacomadragonclass1/booktracker3000`](https://github.com/tacomadragonclass1/booktracker3000)**
+  — this repo. Public, holds only the static app code (no data, no
+  secrets). Serves the site via GitHub Pages.
+- **[`tacomadragonclass1/booktracker3000-data`](https://github.com/tacomadragonclass1/booktracker3000-data)**
+  — private. Holds `data/books.json` (currently seeded with `[]`). The
+  app's Settings panel points at this repo, and all reads/writes of your
+  actual book data go here via the GitHub API — never through Pages, so
+  it's never served as a static file.
+
+If you're setting this up somewhere else, or from scratch, follow the
+general steps below.
 
 ### 1. Decide where your data lives
 
-You can store `data/books.json` in this same repo, or point the app at a
-separate **private** repo dedicated to your book data (recommended, since
-GitHub Pages sites are public by default even if the source repo is
-private — keeping data in a separate private repo means your reviews are
-never served as static files).
-
-If you use a separate data repo, just create an empty private repo on
-GitHub. The app will create `data/books.json` in it automatically on your
-first save.
+You can store `data/books.json` in the same repo as the app, or point the
+app at a separate **private** repo dedicated to your book data
+(recommended — see above for why). If you use a separate data repo, just
+create an empty private repo on GitHub; the app will create
+`data/books.json` in it automatically on your first save.
 
 ### 2. Deploy the app to GitHub Pages
 
-1. Push this folder to a GitHub repo (public or private with Pages enabled
-   on a paid plan — a public repo is fine since the app code contains no
-   secrets or data).
+1. Push the app files (`index.html`, `app.js`, `styles.css`) to a
+   **public** repo (Pages on a private repo requires GitHub Pro/Team/
+   Enterprise).
 2. In the repo settings, enable **GitHub Pages** for the branch/folder
    containing `index.html`.
 3. Visit the published URL.
@@ -51,8 +63,9 @@ first save.
 
 On first visit, the app will show a setup screen asking for:
 
-- **Repo owner** — your GitHub username or org.
-- **Repository name** — the repo holding `data/books.json`.
+- **Repo owner** — your GitHub username or org (e.g. `tacomadragonclass1`).
+- **Repository name** — the repo holding `data/books.json` (e.g.
+  `booktracker3000-data`, *not* `booktracker3000` itself).
 - **Branch** — usually `main`.
 - **Personal Access Token** — the token you just created.
 
