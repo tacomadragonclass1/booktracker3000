@@ -294,7 +294,7 @@ function hideToast() {
    Rendering
    --------------------------------------------------------------------- */
 
-const STATUS_LABELS = { read: "Read", reading: "Currently Reading", want: "Want to Read" };
+const STATUS_LABELS = { read: "Read", reading: "Currently Reading", want: "Want to Read", dnf: "Did Not Finish" };
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function formatGridDate(dateStr) {
@@ -316,7 +316,9 @@ function starString(rating) {
 function getFilteredSortedBooks() {
   let list = state.books.slice();
 
-  if (state.statusFilter !== "all") {
+  if (state.statusFilter === "bangers") {
+    list = list.filter((b) => Number(b.rating) === 5);
+  } else if (state.statusFilter !== "all") {
     list = list.filter((b) => b.status === state.statusFilter);
   }
   if (state.search.trim()) {
@@ -370,7 +372,7 @@ function renderGrid() {
     card.className = "book-card";
     card.dataset.id = book.id;
 
-    const pillClass = book.status === "read" ? "read" : book.status === "reading" ? "reading" : "";
+    const pillClass = ["read", "reading", "dnf"].includes(book.status) ? book.status : "";
     const metaBits = [];
     if (book.date) metaBits.push(formatGridDate(book.date));
 
@@ -396,7 +398,12 @@ function renderGrid() {
   }
 }
 
-const STATUS_FLAG_COLOR = { read: "var(--success)", reading: "var(--accent)", want: "rgba(255,255,255,0.35)" };
+const STATUS_FLAG_COLOR = {
+  read: "var(--success)",
+  reading: "var(--accent)",
+  want: "rgba(255,255,255,0.35)",
+  dnf: "var(--danger)",
+};
 
 function renderShelf() {
   const container = document.getElementById("shelf-books");

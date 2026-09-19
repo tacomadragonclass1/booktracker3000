@@ -281,6 +281,10 @@ select.sort-select {
   color: var(--accent);
 }
 
+.status-pill.dnf {
+  color: var(--danger);
+}
+
 .card-cover-wrap {
   position: relative;
 }
@@ -320,7 +324,12 @@ select.sort-select {
 }
 
 .status-pill-overlay.reading {
-  background: rgba(165, 80, 44, 0.8);
+  background: rgba(76, 130, 220, 0.8);
+  color: #fff;
+}
+
+.status-pill-overlay.dnf {
+  background: rgba(200, 76, 73, 0.8);
   color: #fff;
 }
 
