@@ -179,7 +179,14 @@ function hashString(str) {
 }
 
 function spineWidthFor(id) {
-  return 46 + (hashString(id) % 34); // 46-79px, stands in for spine thickness
+  return 64 + (hashString(id) % 40); // 64-103px, stands in for spine thickness
+}
+
+function authorLastName(author) {
+  const trimmed = (author || "").trim();
+  if (!trimmed) return "";
+  const parts = trimmed.split(/\s+/);
+  return parts[parts.length - 1];
 }
 
 function spineColorFor(title) {
@@ -313,7 +320,7 @@ function starString(rating) {
   return out;
 }
 
-function getFilteredSortedBooks() {
+function getFilteredBooks() {
   let list = state.books.slice();
 
   if (state.statusFilter === "bangers") {
@@ -327,6 +334,11 @@ function getFilteredSortedBooks() {
       (b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q)
     );
   }
+  return list;
+}
+
+function getFilteredSortedBooks() {
+  const list = getFilteredBooks();
 
   const byDate = (a, b) => (a.date || "").localeCompare(b.date || "");
   const byTitle = (a, b) => (a.title || "").localeCompare(b.title || "");
@@ -407,7 +419,10 @@ const STATUS_FLAG_COLOR = {
 
 function renderShelf() {
   const container = document.getElementById("shelf-books");
-  const list = getFilteredSortedBooks();
+  const list = getFilteredBooks().sort((a, b) => {
+    const lastNameCmp = authorLastName(a.author).localeCompare(authorLastName(b.author));
+    return lastNameCmp !== 0 ? lastNameCmp : (a.title || "").localeCompare(b.title || "");
+  });
   container.innerHTML = "";
 
   if (list.length === 0) {
@@ -425,8 +440,7 @@ function renderShelf() {
 
     const cover = coverUrlFor(book.coverId, "M");
     if (cover) {
-      spine.classList.add("has-cover");
-      spine.style.backgroundImage = `url("${cover}")`;
+      spine.style.backgroundImage = `linear-gradient(rgba(10, 12, 18, 0.6), rgba(10, 12, 18, 0.6)), url("${cover}")`;
     } else {
       spine.style.backgroundColor = spineColorFor(book.title);
     }
@@ -440,6 +454,12 @@ function renderShelf() {
     titleEl.className = "spine-title";
     titleEl.textContent = book.title || "Untitled";
     spine.appendChild(titleEl);
+
+    const authorEl = document.createElement("span");
+    authorEl.className = "spine-author";
+    const lastName = authorLastName(book.author) || "Unknown";
+    authorEl.textContent = lastName + (book.rating ? " " + "★".repeat(book.rating) : "");
+    spine.appendChild(authorEl);
 
     const ratingStr = book.rating ? ` — ${"★".repeat(book.rating)}` : "";
     spine.title = `${book.title || "Untitled"} by ${book.author || "Unknown author"}${ratingStr}`;
@@ -485,14 +505,19 @@ function layoutShelfBoards() {
 }
 
 function render() {
+  const sortSelect = document.getElementById("sort-select");
   if (state.viewMode === "shelf") {
     document.getElementById("book-grid").classList.add("hidden");
     document.getElementById("empty-list").classList.add("hidden");
     document.getElementById("shelf-view").classList.remove("hidden");
+    sortSelect.disabled = true;
+    sortSelect.title = "Shelf view is always sorted alphabetically by author";
     renderShelf();
   } else {
     document.getElementById("shelf-view").classList.add("hidden");
     document.getElementById("book-grid").classList.remove("hidden");
+    sortSelect.disabled = false;
+    sortSelect.title = "";
     renderGrid();
   }
 }
