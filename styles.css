@@ -1,49 +1,27 @@
 :root {
-  --bg: #faf9f6;
-  --bg-elevated: #ffffff;
-  --text: #1c1b1a;
-  --text-dim: #6b6863;
-  --text-faint: #a19d96;
-  --border: #e6e3dd;
-  --accent: #a5502c;
-  --accent-text: #ffffff;
-  --danger: #b3432b;
-  --success: #4c7a4c;
-  --star-on: #d9a441;
-  --star-off: #d8d4cc;
-  --wood-a: #8a5a35;
-  --wood-b: #6b4326;
-  --wood-grain: rgba(0, 0, 0, 0.12);
-  --wood-board: #4a2f1a;
-  --wood-board-edge: rgba(255, 224, 178, 0.15);
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --bg: #10151d;
+  --bg-elevated: #1a2230;
+  --text: #e8edf5;
+  --text-dim: #92a1b8;
+  --text-faint: #5b6b82;
+  --border: #263042;
+  --accent: #6ea8ff;
+  --accent-text: #0d1626;
+  --danger: #ef6461;
+  --success: #5fc37f;
+  --star-on: #f2b84b;
+  --star-off: #333f52;
+  --wood-a: #5c3d24;
+  --wood-b: #452c18;
+  --wood-grain: rgba(0, 0, 0, 0.22);
+  --wood-board: #2c1c10;
+  --wood-board-edge: rgba(255, 214, 170, 0.1);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
   --radius: 10px;
   --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1918;
-    --bg-elevated: #232220;
-    --text: #eae7e1;
-    --text-dim: #a19d96;
-    --text-faint: #706c66;
-    --border: #34322f;
-    --accent: #d9814f;
-    --accent-text: #1a1918;
-    --danger: #e0725a;
-    --success: #7fb37f;
-    --star-on: #e0b45a;
-    --star-off: #3a3835;
-    --wood-a: #5c3d24;
-    --wood-b: #452c18;
-    --wood-grain: rgba(0, 0, 0, 0.22);
-    --wood-board: #2c1c10;
-    --wood-board-edge: rgba(255, 214, 170, 0.1);
-    --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
+  color-scheme: dark;
 }
 
 * {
@@ -301,6 +279,49 @@ select.sort-select {
 
 .status-pill.reading {
   color: var(--accent);
+}
+
+.card-cover-wrap {
+  position: relative;
+}
+
+.card-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--border);
+  display: block;
+}
+
+.card-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.status-pill-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  border: none;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.status-pill-overlay.read {
+  background: rgba(76, 122, 76, 0.8);
+  color: #fff;
+}
+
+.status-pill-overlay.reading {
+  background: rgba(165, 80, 44, 0.8);
+  color: #fff;
 }
 
 .book-card h3 {

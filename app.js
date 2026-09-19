@@ -295,6 +295,14 @@ function hideToast() {
    --------------------------------------------------------------------- */
 
 const STATUS_LABELS = { read: "Read", reading: "Currently Reading", want: "Want to Read" };
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatGridDate(dateStr) {
+  const parts = (dateStr || "").split("-");
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  if (parts.length < 2 || monthIdx < 0 || monthIdx > 11) return dateStr;
+  return `${MONTH_ABBR[monthIdx]} '${parts[0].slice(-2)}`;
+}
 
 function starString(rating) {
   const r = Number(rating) || 0;
@@ -364,10 +372,20 @@ function renderGrid() {
 
     const pillClass = book.status === "read" ? "read" : book.status === "reading" ? "reading" : "";
     const metaBits = [];
-    if (book.date) metaBits.push(book.date);
+    if (book.date) metaBits.push(formatGridDate(book.date));
+
+    const cover = coverUrlFor(book.coverId, "M");
+    const coverHtml = cover
+      ? `<img class="card-cover" src="${cover}" alt="" loading="lazy" />`
+      : `<div class="card-cover card-cover-placeholder" style="background:${spineColorFor(book.title)}"><span>${escapeHtml(
+          (book.title || "?").charAt(0).toUpperCase()
+        )}</span></div>`;
 
     card.innerHTML = `
-      <span class="status-pill ${pillClass}">${STATUS_LABELS[book.status] || book.status}</span>
+      <div class="card-cover-wrap">
+        ${coverHtml}
+        <span class="status-pill status-pill-overlay ${pillClass}">${STATUS_LABELS[book.status] || book.status}</span>
+      </div>
       <h3>${escapeHtml(book.title || "Untitled")}</h3>
       <p class="author">${escapeHtml(book.author || "Unknown author")}</p>
       <div class="stars">${starString(book.rating)}</div>
