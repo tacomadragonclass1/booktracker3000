@@ -91,6 +91,16 @@ nothing on GitHub is touched).
   (`coverId`, `isbn`, `firstPublishYear`, `olKey`) and shown in the detail
   view; older book records without these fields work fine, they just show
   no cover.
+- **Paste your own cover art**: can't find it on Open Library, or want a
+  screenshot of your own copy? Click the "Or paste your own cover art" box
+  in the form and paste an image (Ctrl/Cmd+V) straight from your clipboard.
+  It's downscaled and compressed client-side (long side capped at 480px,
+  JPEG ~80% quality) and stored directly on the book record as a
+  `customCover` data URL — no extra GitHub repo or upload step needed. A
+  pasted cover takes priority over an Open Library one everywhere it's
+  shown; "Remove cover" clears whichever is active. Because it's stored
+  inline in `books.json`, pasting covers on many books will grow that file
+  faster than relying on Open Library links — see the size note below.
 - **Shelf view**: a second view mode (toggle next to the status tabs) that
   renders your filtered/sorted books as spines standing on a wooden shelf
   background — books with a cover show it as the spine art, others get a

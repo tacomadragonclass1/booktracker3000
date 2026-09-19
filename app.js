@@ -158,6 +158,10 @@ function coverUrlFor(coverId, size) {
   return `${OPEN_LIBRARY_COVER_URL}/${coverId}-${size || "M"}.jpg`;
 }
 
+function resolveCoverUrl(book, size) {
+  return book.customCover || coverUrlFor(book.coverId, size);
+}
+
 async function searchBookMetadata(query) {
   const url = `${OPEN_LIBRARY_SEARCH_URL}?q=${encodeURIComponent(query)}&fields=title,author_name,first_publish_year,cover_i,isbn,key&limit=8`;
   const res = await fetch(url);
@@ -388,7 +392,7 @@ function renderGrid() {
     const metaBits = [];
     if (book.date) metaBits.push(formatGridDate(book.date));
 
-    const cover = coverUrlFor(book.coverId, "M");
+    const cover = resolveCoverUrl(book, "M");
     const coverHtml = cover
       ? `<img class="card-cover" src="${cover}" alt="" loading="lazy" />`
       : `<div class="card-cover card-cover-placeholder" style="background:${spineColorFor(book.title)}"><span>${escapeHtml(
@@ -438,7 +442,7 @@ function renderShelf() {
     spine.className = "spine";
     spine.style.minWidth = spineWidthFor(book.id) + "px";
 
-    const cover = coverUrlFor(book.coverId, "M");
+    const cover = resolveCoverUrl(book, "M");
     if (cover) {
       spine.style.backgroundImage = `linear-gradient(rgba(6, 8, 13, 0.82), rgba(6, 8, 13, 0.82)), url("${cover}")`;
     } else {
@@ -588,6 +592,7 @@ function readFormValues() {
     isbn: currentIsbn,
     firstPublishYear: currentFirstPublishYear,
     olKey: currentOlKey,
+    customCover: currentCustomCover,
   };
 }
 
@@ -626,6 +631,7 @@ let currentCoverId = null;
 let currentIsbn = null;
 let currentFirstPublishYear = null;
 let currentOlKey = null;
+let currentCustomCover = null;
 
 function setStarPicker(rating) {
   currentFormRating = rating;
@@ -639,7 +645,11 @@ function updateCoverPreview() {
   const row = document.getElementById("cover-preview-row");
   const img = document.getElementById("cover-preview-img");
   const text = document.getElementById("cover-preview-text");
-  if (currentCoverId) {
+  if (currentCustomCover) {
+    img.src = currentCustomCover;
+    text.textContent = "Custom pasted cover";
+    row.classList.remove("hidden");
+  } else if (currentCoverId) {
     img.src = coverUrlFor(currentCoverId, "M");
     const bits = [];
     if (currentFirstPublishYear) bits.push(`First published ${currentFirstPublishYear}`);
@@ -657,7 +667,61 @@ function setMetaState({ coverId = null, isbn = null, firstPublishYear = null, ol
   currentIsbn = isbn;
   currentFirstPublishYear = firstPublishYear;
   currentOlKey = olKey;
+  currentCustomCover = null;
   updateCoverPreview();
+}
+
+/**
+ * Downscale a pasted image Blob to a data URL, keeping book records (and
+ * therefore books.json) small. Longest side capped at maxDim.
+ */
+function imageBlobToDataUrl(blob, maxDim = 480, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) {
+          height = Math.round(height * (maxDim / width));
+          width = maxDim;
+        } else {
+          width = Math.round(width * (maxDim / height));
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read that image"));
+    };
+    img.src = url;
+  });
+}
+
+async function handleCoverPaste(e) {
+  const items = (e.clipboardData || window.clipboardData || {}).items || [];
+  const imageItem = Array.from(items).find((item) => item.type && item.type.startsWith("image/"));
+  if (!imageItem) {
+    showToast("Clipboard didn't contain an image.", { error: true });
+    return;
+  }
+  e.preventDefault();
+  try {
+    const dataUrl = await imageBlobToDataUrl(imageItem.getAsFile());
+    currentCoverId = null;
+    currentCustomCover = dataUrl;
+    updateCoverPreview();
+    if (state.editingId) scheduleDraftSave(state.editingId);
+  } catch (err) {
+    showToast(err.message, { error: true });
+  }
 }
 
 function renderMetaResults(docs) {
@@ -756,6 +820,8 @@ function openEditForm(book) {
     firstPublishYear: book.firstPublishYear || null,
     olKey: book.olKey || null,
   });
+  currentCustomCover = book.customCover || null;
+  updateCoverPreview();
   document.getElementById("delete-book-btn").classList.remove("hidden");
   document.getElementById("draft-note").textContent = "";
 
@@ -768,7 +834,8 @@ function openEditForm(book) {
       draft.values.status !== book.status ||
       draft.values.date !== (book.date || "") ||
       Number(draft.values.rating) !== (Number(book.rating) || 0) ||
-      (draft.values.coverId || null) !== (book.coverId || null);
+      (draft.values.coverId || null) !== (book.coverId || null) ||
+      (draft.values.customCover || null) !== (book.customCover || null);
 
     if (draftDiffers) {
       const when = new Date(draft.savedAt).toLocaleString();
@@ -785,6 +852,8 @@ function openEditForm(book) {
           firstPublishYear: draft.values.firstPublishYear || null,
           olKey: draft.values.olKey || null,
         });
+        currentCustomCover = draft.values.customCover || null;
+        updateCoverPreview();
         document.getElementById("draft-note").textContent = "Restored unsaved draft.";
       }
     }
@@ -817,6 +886,7 @@ async function handleFormSubmit(e) {
     isbn: values.isbn,
     firstPublishYear: values.firstPublishYear,
     olKey: values.olKey,
+    customCover: values.customCover,
     updatedAt: now,
     createdAt: existingIndex >= 0 ? state.books[existingIndex].createdAt || now : now,
   };
@@ -927,7 +997,7 @@ function openDetail(id) {
   document.getElementById("detail-meta").textContent = metaBits.join(" · ");
 
   const coverImg = document.getElementById("detail-cover");
-  const coverUrl = coverUrlFor(book.coverId, "L");
+  const coverUrl = resolveCoverUrl(book, "L");
   if (coverUrl) {
     coverImg.src = coverUrl;
     coverImg.classList.remove("hidden");
@@ -1107,6 +1177,7 @@ function wireEvents() {
     }
   });
   document.getElementById("cover-remove-btn").addEventListener("click", handleCoverRemove);
+  document.getElementById("cover-paste-zone").addEventListener("paste", handleCoverPaste);
 
   let shelfResizeTimer = null;
   window.addEventListener("resize", () => {

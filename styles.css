@@ -676,6 +676,33 @@ select.sort-select:disabled {
   color: var(--text-faint);
 }
 
+.paste-cover-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+
+.cover-paste-zone {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-faint);
+  cursor: text;
+  background: var(--bg);
+}
+
+.cover-paste-zone:focus {
+  outline: none;
+  border-color: var(--accent);
+  color: var(--text-dim);
+  background: var(--bg-elevated);
+}
+
 .cover-preview-row {
   margin-top: 12px;
   display: flex;
