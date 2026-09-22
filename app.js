@@ -329,7 +329,11 @@ function getFilteredBooks() {
 
   if (state.statusFilter === "bangers") {
     list = list.filter((b) => Number(b.rating) === 5);
-  } else if (state.statusFilter !== "all") {
+  } else if (state.statusFilter === "all") {
+    // "Want to Read" is a wishlist, not part of the library — it only shows
+    // up under its own tab.
+    list = list.filter((b) => b.status !== "want");
+  } else {
     list = list.filter((b) => b.status === state.statusFilter);
   }
   if (state.search.trim()) {
@@ -787,7 +791,7 @@ function openAddForm() {
   document.getElementById("book-id").value = state.editingId;
   document.getElementById("field-title").value = "";
   document.getElementById("field-author").value = "";
-  document.getElementById("field-status").value = "want";
+  document.getElementById("field-status").value = "read";
   document.getElementById("field-date").value = "";
   document.getElementById("field-notes").value = "";
   setStarPicker(0);
@@ -807,7 +811,7 @@ function openEditForm(book) {
   document.getElementById("book-id").value = book.id;
   document.getElementById("field-title").value = book.title || "";
   document.getElementById("field-author").value = book.author || "";
-  document.getElementById("field-status").value = book.status || "want";
+  document.getElementById("field-status").value = book.status || "read";
   document.getElementById("field-date").value = book.date || "";
   document.getElementById("field-notes").value = book.notes || "";
   setStarPicker(Number(book.rating) || 0);
